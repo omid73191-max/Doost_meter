@@ -268,14 +268,14 @@
     const rightScoreEl = document.getElementById("rightScore");
     const effectsLayer = document.getElementById("effectsLayer");
 
-    const milestoneSound = new Audio("./celebration.m4a");
-    milestoneSound.preload = "auto";
+    const negativeSound = new Audio("./celebration.m4a");
+    negativeSound.preload = "auto";
 
-    function playMilestoneSound() {
+    function playNegativeSound() {
       try {
-        milestoneSound.pause();
-        milestoneSound.currentTime = 0;
-        milestoneSound.play();
+        negativeSound.pause();
+        negativeSound.currentTime = 0;
+        negativeSound.play();
       } catch (error) {
         console.log("Sound could not play:", error);
       }
@@ -340,10 +340,7 @@
         triggerConfetti();
       } else if (delta < 0) {
         triggerDislikeEmoji();
-      }
-
-      if (delta > 0 && newValue > 0 && newValue % 10 === 0) {
-        playMilestoneSound();
+        playNegativeSound();
       }
 
       await update(meterRef, {
