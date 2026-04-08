@@ -14,10 +14,6 @@
       padding: 20px;
     }
 
-    h1 {
-      margin-bottom: 20px;
-    }
-
     .container {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
@@ -41,10 +37,8 @@
       text-align: center;
       border: none;
       border-bottom: 1px solid #ddd;
-      outline: none;
       margin-bottom: 20px;
       padding-bottom: 8px;
-      background: transparent;
     }
 
     .score {
@@ -71,30 +65,6 @@
 
     .heart {
       font-size: 120px;
-      line-height: 1;
-    }
-
-    .bottom {
-      margin-top: 20px;
-    }
-
-    button {
-      padding: 10px 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      background: white;
-      cursor: pointer;
-    }
-
-    @media (max-width: 700px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
-
-      .heart {
-        order: 2;
-        font-size: 90px;
-      }
     }
   </style>
 </head>
@@ -125,30 +95,27 @@
     </div>
   </div>
 
-  <div class="bottom">
-    <button onclick="resetScores()">Reset</button>
-  </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
       getDatabase,
       ref,
       onValue,
-      set,
-      update
+      update,
+      get,
+      set
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyD8-GMbi2DryUhdAxwmMUxUrdIHITKe3U4",
-  authDomain: "doost-meter.firebaseapp.com",
-  databaseURL: "https://doost-meter-default-rtdb.firebaseio.com",
-  projectId: "doost-meter",
-  storageBucket: "doost-meter.firebasestorage.app",
-  messagingSenderId: "373813005835",
-  appId: "1:373813005835:web:b2feb8a6e4ad668b45410e",
-  measurementId: "G-8W5GTN7LZ4"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyD8-GMbi2DryUhdAxwmMUxUrdIHITKe3U4",
+      authDomain: "doost-meter.firebaseapp.com",
+      databaseURL: "https://doost-meter-default-rtdb.firebaseio.com",
+      projectId: "doost-meter",
+      storageBucket: "doost-meter.firebasestorage.app",
+      messagingSenderId: "373813005835",
+      appId: "1:373813005835:web:b2feb8a6e4ad668b45410e",
+      measurementId: "G-8W5GTN7LZ4"
+    };
 
     const defaultState = {
       leftName: "Bahar",
@@ -157,7 +124,10 @@ const firebaseConfig = {
       rightScore: 0
     };
 
-    let db = null;
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const meterRef = ref(db, "doost-meter/main");
+
     let currentData = { ...defaultState };
 
     const leftNameInput = document.getElementById("leftName");
@@ -166,36 +136,22 @@ const firebaseConfig = {
     const rightScoreEl = document.getElementById("rightScore");
 
     function render(data) {
-      currentData = data;
-      leftNameInput.value = data.leftName;
-      rightNameInput.value = data.rightName;
-      leftScoreEl.textContent = data.leftScore;
-      rightScoreEl.textContent = data.rightScore;
-    }
-
-    function getRef() {
-      return ref(db, "doost-meter/main");
-    }
-
-    function saveLocal(data) {
-      localStorage.setItem("doost-meter", JSON.stringify(data));
-    }
-
-    function loadLocal() {
-      const d = localStorage.getItem("doost-meter");
-      return d ? JSON.parse(d) : { ...defaultState };
+      currentData = { ...defaultState, ...data };
+      leftNameInput.value = currentData.leftName;
+      rightNameInput.value = currentData.rightName;
+      leftScoreEl.textContent = currentData.leftScore;
+      rightScoreEl.textContent = currentData.rightScore;
     }
 
     async function connect() {
-      const app = initializeApp(firebaseConfig);
-      db = getDatabase(app);
+      const snapshot = await get(meterRef);
 
-      await set(getRef(), loadLocal());
+      if (!snapshot.exists()) {
+        await set(meterRef, defaultState);
+      }
 
-      onValue(getRef(), (snap) => {
-        const data = snap.val() || defaultState;
-        render(data);
-        saveLocal(data);
+      onValue(meterRef, (snap) => {
+        render(snap.val() || defaultState);
       });
     }
 
@@ -203,39 +159,25 @@ const firebaseConfig = {
       const key = side === "left" ? "leftScore" : "rightScore";
       const next = {
         ...currentData,
-        [key]: currentData[key] + delta
+        [key]: Number(currentData[key] || 0) + delta
       };
-      render(next);
-      saveLocal(next);
-      await update(getRef(), next);
-    };
-
-    window.resetScores = async function () {
-      const next = {
-        ...currentData,
-        leftScore: 0,
-        rightScore: 0
-      };
-      render(next);
-      saveLocal(next);
-      await update(getRef(), next);
+      await update(meterRef, next);
     };
 
     leftNameInput.addEventListener("change", async () => {
-      const next = { ...currentData, leftName: leftNameInput.value };
-      render(next);
-      saveLocal(next);
-      await update(getRef(), next);
+      await update(meterRef, {
+        ...currentData,
+        leftName: leftNameInput.value || "Bahar"
+      });
     });
 
     rightNameInput.addEventListener("change", async () => {
-      const next = { ...currentData, rightName: rightNameInput.value };
-      render(next);
-      saveLocal(next);
-      await update(getRef(), next);
+      await update(meterRef, {
+        ...currentData,
+        rightName: rightNameInput.value || "Mahmoud"
+      });
     });
 
-    render(loadLocal());
     connect();
   </script>
 
