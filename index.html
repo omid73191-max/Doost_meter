@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doost Meter</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 20px;
+      align-items: center;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+
+    .nameInput {
+      width: 100%;
+      font-size: 36px;
+      font-weight: bold;
+      text-align: center;
+      border: none;
+      border-bottom: 1px solid #ddd;
+      outline: none;
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      background: transparent;
+    }
+
+    .score {
+      font-size: 72px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .scoreBtn {
+      width: 70px;
+      height: 70px;
+      font-size: 32px;
+      border-radius: 14px;
+      border: 1px solid #ccc;
+      background: white;
+      cursor: pointer;
+    }
+
+    .heart {
+      font-size: 120px;
+      line-height: 1;
+    }
+
+    .bottom {
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      background: white;
+      cursor: pointer;
+    }
+
+    @media (max-width: 700px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      .heart {
+        order: 2;
+        font-size: 90px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Doost Meter ❤️</h1>
+
+  <div class="container">
+    <div class="card">
+      <input id="leftName" class="nameInput" value="Bahar" />
+      <div class="score" id="leftScore">0</div>
+      <div class="buttons">
+        <button class="scoreBtn" onclick="changeScore('left', -1)">-</button>
+        <button class="scoreBtn" onclick="changeScore('left', 1)">+</button>
+      </div>
+    </div>
+
+    <div class="heart">❤️</div>
+
+    <div class="card">
+      <input id="rightName" class="nameInput" value="Mahmoud" />
+      <div class="score" id="rightScore">0</div>
+      <div class="buttons">
+        <button class="scoreBtn" onclick="changeScore('right', -1)">-</button>
+        <button class="scoreBtn" onclick="changeScore('right', 1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <button onclick="resetScores()">Reset</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      onValue,
+      set,
+      update
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "PASTE_YOUR_API_KEY",
+      authDomain: "PASTE_YOUR_AUTH_DOMAIN",
+      databaseURL: "PASTE_YOUR_DATABASE_URL",
+      projectId: "PASTE_YOUR_PROJECT_ID",
+      storageBucket: "PASTE_YOUR_STORAGE_BUCKET",
+      messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID",
+      appId: "PASTE_YOUR_APP_ID"
+    };
+
+    const defaultState = {
+      leftName: "Bahar",
+      rightName: "Mahmoud",
+      leftScore: 0,
+      rightScore: 0
+    };
+
+    let db = null;
+    let currentData = { ...defaultState };
+
+    const leftNameInput = document.getElementById("leftName");
+    const rightNameInput = document.getElementById("rightName");
+    const leftScoreEl = document.getElementById("leftScore");
+    const rightScoreEl = document.getElementById("rightScore");
+
+    function render(data) {
+      currentData = data;
+      leftNameInput.value = data.leftName;
+      rightNameInput.value = data.rightName;
+      leftScoreEl.textContent = data.leftScore;
+      rightScoreEl.textContent = data.rightScore;
+    }
+
+    function getRef() {
+      return ref(db, "doost-meter/main");
+    }
+
+    function saveLocal(data) {
+      localStorage.setItem("doost-meter", JSON.stringify(data));
+    }
+
+    function loadLocal() {
+      const d = localStorage.getItem("doost-meter");
+      return d ? JSON.parse(d) : { ...defaultState };
+    }
+
+    async function connect() {
+      const app = initializeApp(firebaseConfig);
+      db = getDatabase(app);
+
+      await set(getRef(), loadLocal());
+
+      onValue(getRef(), (snap) => {
+        const data = snap.val() || defaultState;
+        render(data);
+        saveLocal(data);
+      });
+    }
+
+    window.changeScore = async function (side, delta) {
+      const key = side === "left" ? "leftScore" : "rightScore";
+      const next = {
+        ...currentData,
+        [key]: currentData[key] + delta
+      };
+      render(next);
+      saveLocal(next);
+      await update(getRef(), next);
+    };
+
+    window.resetScores = async function () {
+      const next = {
+        ...currentData,
+        leftScore: 0,
+        rightScore: 0
+      };
+      render(next);
+      saveLocal(next);
+      await update(getRef(), next);
+    };
+
+    leftNameInput.addEventListener("change", async () => {
+      const next = { ...currentData, leftName: leftNameInput.value };
+      render(next);
+      saveLocal(next);
+      await update(getRef(), next);
+    });
+
+    rightNameInput.addEventListener("change", async () => {
+      const next = { ...currentData, rightName: rightNameInput.value };
+      render(next);
+      saveLocal(next);
+      await update(getRef(), next);
+    });
+
+    render(loadLocal());
+    connect();
+  </script>
+
+</body>
+</html>
