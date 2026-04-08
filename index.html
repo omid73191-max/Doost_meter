@@ -14,7 +14,6 @@
       --panel: #171a21;
       --panelSoft: #1d212b;
       --text: #f5f7fb;
-      --muted: #aeb6c7;
       --line: rgba(255,255,255,0.08);
       --shadow: 0 12px 30px rgba(0,0,0,0.35);
       --btnBg: #232938;
@@ -202,7 +201,6 @@
 </head>
 
 <body>
-
   <div id="effectsLayer" class="effectsLayer"></div>
 
   <h1>Doost Meter ❤️</h1>
@@ -270,6 +268,19 @@
     const rightScoreEl = document.getElementById("rightScore");
     const effectsLayer = document.getElementById("effectsLayer");
 
+    const milestoneSound = new Audio("./celebration.m4a");
+    milestoneSound.preload = "auto";
+
+    function playMilestoneSound() {
+      try {
+        milestoneSound.pause();
+        milestoneSound.currentTime = 0;
+        milestoneSound.play();
+      } catch (error) {
+        console.log("Sound could not play:", error);
+      }
+    }
+
     function render(data) {
       currentData = { ...defaultState, ...data };
       leftNameInput.value = currentData.leftName;
@@ -321,16 +332,23 @@
     }
 
     window.changeScore = async function (side, delta) {
+      const key = side === "left" ? "leftScore" : "rightScore";
+      const currentValue = Number(currentData[key] || 0);
+      const newValue = currentValue + delta;
+
       if (delta > 0) {
         triggerConfetti();
       } else if (delta < 0) {
         triggerDislikeEmoji();
       }
 
-      const key = side === "left" ? "leftScore" : "rightScore";
+      if (delta > 0 && newValue > 0 && newValue % 10 === 0) {
+        playMilestoneSound();
+      }
+
       await update(meterRef, {
         ...currentData,
-        [key]: Number(currentData[key] || 0) + delta
+        [key]: newValue
       });
     };
 
@@ -350,6 +368,5 @@
 
     connect();
   </script>
-
 </body>
 </html>
